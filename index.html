@@ -1,51 +1,77 @@
-
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <meta charset="utf-8" />
-    <title>MeowAfisha — Календарь и карта</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-    <style>
-      body { font-family: sans-serif; margin: 0; }
-      #map { height: 90vh; width: 100%; }
-      #controls { padding: 10px; background: #f7f7f7; }
-    </style>
+  <meta charset="utf-8">
+  <title>MeowAfisha — календарь и карта</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link  href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" rel="stylesheet">
+  <style>
+    body        { margin:0; font-family:sans-serif; }
+    #controls   { padding:12px; background:#f7f7f7; }
+    #map        { width:100%; height:90vh; }
+    input[type=date] { font-size:16px; }
+  </style>
 </head>
 <body>
-    <div id="controls">
-        <label for="event-date">📅 Выберите дату: </label>
-        <input type="date" id="event-date">
-    </div>
-    <div id="map"></div>
+  <div id="controls">
+    <label for="event-date">📅 Дата: </label>
+    <input type="date" id="event-date">
+    <span id="count"></span>
+  </div>
+  <div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-    <script>
-        const events = [{"title": "Квартет Алексея Маркова", "date": "2025-07-27", "lat": 54.7221381, "lon": 20.4683956, "location": "Авантюрист, Мира 106"}, {"title": "LINKIN PARK", "date": "2025-07-26", "lat": 52.4159508, "lon": 30.9159955, "location": "Кауп"}, {"title": "Калининград Сити Джаз", "date": "2025-08-01", "lat": 50.0213949, "lon": 36.247144, "location": "Центральный парк"}];
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script>
+  /* ───── НАСТРОЙКА: меняйте строку после ?v= при каждом обновлении ───── */
+  const JSON_URL = 'events.json?v=20250727';        // cache-buster
 
-        const map = L.map('map').setView([54.7104, 20.4522], 10);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
-        }).addTo(map);
+  /* ───── Leaflet карта ───── */
+  const map = L.map('map').setView([54.71, 20.45], 10);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              { maxZoom:18, attribution:'© OSM' }).addTo(map);
 
-        let markers = [];
+  let markers = [];
 
-        function updateMap(date) {
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
+  function clearMarkers() { markers.forEach(m => map.removeLayer(m)); markers=[]; }
 
-            const filtered = events.filter(e => e.date === date);
-            filtered.forEach(e => {
-                const marker = L.marker([e.lat, e.lon])
-                    .bindPopup(`<b>${e.title}</b><br>${e.location}<br>${e.date}`)
-                    .addTo(map);
-                markers.push(marker);
-            });
+  function addEventMarker(ev){
+      const m = L.marker([ev.lat, ev.lon])
+                 .bindPopup(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`)
+                 .addTo(map);
+      markers.push(m);
+  }
+
+  /* ───── Подтягиваем events.json ───── */
+  fetch(JSON_URL)
+    .then(r => r.json())
+    .then(events => {
+        /* сортируем по дате */
+        events.sort((a,b)=> a.date.localeCompare(b.date));
+
+        /* ставим min/max для календаря */
+        const minDate = events[0].date;
+        const maxDate = events[events.length-1].date;
+        const input   = document.getElementById('event-date');
+        input.min = minDate;  input.max = maxDate;
+
+        /* выбираем сегодняшнюю, а если её нет — ближайшую */
+        const today = new Date().toISOString().slice(0,10);
+        const first = events.find(e=>e.date>=today) ? today : minDate;
+        input.value = first;
+
+        /* отображаем */
+        function updateMap(d){
+            clearMarkers();
+            const todays = events.filter(e=>e.date===d);
+            todays.forEach(addEventMarker);
+            document.getElementById('count').textContent =
+                `– мероприятий: ${todays.length}`;
+            if(todays.length){ map.setView([todays[0].lat, todays[0].lon], 12); }
         }
-
-        document.getElementById('event-date').addEventListener('change', e => {
-            updateMap(e.target.value);
-        });
-    </script>
+        updateMap(first);
+        input.addEventListener('change', e=>updateMap(e.target.value));
+    })
+    .catch(err => console.error('Не удалось загрузить events.json', err));
+  </script>
 </body>
 </html>
