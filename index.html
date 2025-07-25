@@ -1,0 +1,51 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>MeowAfisha — Календарь и карта</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <style>
+      body { font-family: sans-serif; margin: 0; }
+      #map { height: 90vh; width: 100%; }
+      #controls { padding: 10px; background: #f7f7f7; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <label for="event-date">📅 Выберите дату: </label>
+        <input type="date" id="event-date">
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script>
+        const events = [{"title": "Квартет Алексея Маркова", "date": "2025-07-27", "lat": 54.7221381, "lon": 20.4683956, "location": "Авантюрист, Мира 106"}, {"title": "LINKIN PARK", "date": "2025-07-26", "lat": 52.4159508, "lon": 30.9159955, "location": "Кауп"}, {"title": "Калининград Сити Джаз", "date": "2025-08-01", "lat": 50.0213949, "lon": 36.247144, "location": "Центральный парк"}];
+
+        const map = L.map('map').setView([54.7104, 20.4522], 10);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+        }).addTo(map);
+
+        let markers = [];
+
+        function updateMap(date) {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            const filtered = events.filter(e => e.date === date);
+            filtered.forEach(e => {
+                const marker = L.marker([e.lat, e.lon])
+                    .bindPopup(`<b>${e.title}</b><br>${e.location}<br>${e.date}`)
+                    .addTo(map);
+                markers.push(marker);
+            });
+        }
+
+        document.getElementById('event-date').addEventListener('change', e => {
+            updateMap(e.target.value);
+        });
+    </script>
+</body>
+</html>
