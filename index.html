@@ -69,7 +69,11 @@
             if(todays.length){ map.setView([todays[0].lat, todays[0].lon], 12); }
         }
         updateMap(first);
-        input.addEventListener('change', e=>updateMap(e.target.value));
+        input.addEventListener('change', e => {
+          const selected = new Date(e.target.value).toISOString().slice(0, 10);
+          updateMap(selected);
+});
+
     })
     .catch(err => console.error('Не удалось загрузить events.json', err));
   </script>
