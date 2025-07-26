@@ -20,13 +20,11 @@
 </head>
 <body>
   <div id="controls">
-  <img src="7bd2d27e-bdc7-4d87-85be-5ac5ec35e757.png" alt="Meow Records" style="height:32px; vertical-align:middle;">
-  <label for="event-date">📅 Дата: </label>
-  <input type="date" id="event-date">
-  <button onclick="showAll()">Показать все</button>
-  <button onclick="getLocation()">📍 Мое местоположение</button>
-  <span id="count"></span>
+    <label for="event-date">📅 Дата: </label>
+    <input type="date" id="event-date">
+    <span id="count"></span>
   </div>
+  <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script>
