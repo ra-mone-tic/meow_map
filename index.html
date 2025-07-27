@@ -12,14 +12,21 @@
     input[type=date] { font-size:16px; }
     .maplibregl-popup-content { font-size:14px; line-height:1.3; }
   </style>
-</head>
-<body>
+  </head>
+  <body>
   <div id="controls">
     <label for="event-date">📅 Дата: </label>
     <input type="date" id="event-date">
     <span id="count"></span>
   </div>
-  <div id="map"></div>
+  <div style="display:flex; flex-direction:row; height:90vh;">
+  <div id="map" style="flex:1;"></div>
+  <div id="sidebar" style="width:300px; background:#fff; padding:12px; overflow-y:auto; font-size:14px;">
+    <h3>Ближайшие события</h3>
+    <div id="upcoming"></div>
+  </div>
+  </div>
+
 
   <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
   <script>
