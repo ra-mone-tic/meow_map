@@ -83,20 +83,32 @@
 
         // Ближайшие 3 события
         const todayObj = new Date();
-        const upcoming = events
-          .filter(e => new Date(e.date) >= todayObj)
-          .slice(0, 3);
+        const upcoming = events.filter(e => new Date(e.date) >= todayObj).slice(0, 100); // максимум 100
 
         const upcomingDiv = document.getElementById('upcoming');
         if (upcoming.length === 0) {
           upcomingDiv.innerHTML = '<p>Пока нет предстоящих событий</p>';
         } else {
           upcoming.forEach(e => {
-            const el = document.createElement('div');
-            el.style.marginBottom = '1em';
-            el.innerHTML = `<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
-            upcomingDiv.appendChild(el);
-          });
+          const el = document.createElement('div');
+          el.style.marginBottom = '1em';
+          el.style.cursor = 'pointer';
+          el.style.borderBottom = '1px dashed #ccc';
+          el.style.paddingBottom = '8px';
+          el.innerHTML = `<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
+          el.addEventListener('click', () => {
+          const marker = markers.find(m => {
+          const coords = m.getLngLat();
+          return Math.abs(coords.lat - e.lat) < 0.0001 && Math.abs(coords.lng - e.lon) < 0.0001;
+    });
+    if (marker) {
+      map.flyTo({ center: [e.lon, e.lat], zoom: 14 });
+      marker.togglePopup();
+    }
+  });
+  upcomingDiv.appendChild(el);
+});
+
         }
 
         // Обновление карты по дате
