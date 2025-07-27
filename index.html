@@ -130,10 +130,17 @@
         d.innerHTML=`<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
         d.onclick=()=>{
           render(e.date);
-          map.flyTo({center:[e.lon,e.lat],zoom:14});
-          markers.length&&markers.find(mk=>{
-            const p=mk.getLngLat();return Math.abs(p.lat-e.lat)<1e-5&&Math.abs(p.lng-e.lon)<1e-5;
-          })?.togglePopup();
+          setTimeout(()=>{
+          const m = markers.find(mk => {
+          const p = mk.getLngLat();
+          return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
+        });
+        if (m) {
+          map.flyTo({center: [e.lon, e.lat], zoom: 14});
+          m.togglePopup();
+        }
+      }, 100);
+
           document.getElementById('sidebar').classList.remove('open'); // закрыть после выбора
         };
         upDiv.appendChild(d);
