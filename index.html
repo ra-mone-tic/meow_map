@@ -7,19 +7,14 @@
   <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet"/>
   <style>
     body{margin:0;font-family:sans-serif;}
-
-    /* верхняя панель */
     #controls{
       display:flex;align-items:center;gap:8px;
       padding:12px;background:#f7f7f7;border-bottom:1px solid #ccc;
     }
     input[type=date]{font-size:16px;}
-
     #logo{height:32px;}
     #burger{cursor:pointer;font-size:26px;}
     #count{margin-left:8px;font-weight:bold;}
-
-    /* карта + сайдбар */
     #map{flex:1;}
     #sidebar{
       width:300px;background:#fff;overflow-y:auto;
@@ -30,12 +25,8 @@
       border-bottom:1px dashed #ccc;padding-bottom:8px;
     }
     #sidebar div.item:hover{background:#f0f0f0;}
-
-    /* кнопка закрытия сайдбара */
     #closeSidebar{cursor:pointer;font-size:22px;font-weight:bold;}
-
-    /* мобильная адаптация */
-    #burger{display:none;}                    /* бургер только на мобилке */
+    #burger{display:none;}
     @media(max-width:768px){
       #layout{flex-direction:column;}
       #sidebar{
@@ -45,14 +36,13 @@
         z-index:999;box-shadow:-4px 0 6px rgba(0,0,0,.15);
       }
       #sidebar.open{transform:translateX(0);}
-      #burger{display:block;margin-left:auto;} /* справа от логотипа */
-      #count{display:none;}                    /* счётчик прячем на мобилке */
+      #burger{display:block;margin-left:auto;}
+      #count{display:none;}
     }
   </style>
 </head>
 <body>
 
-  <!-- Верхняя панель -->
   <div id="controls">
     <label for="event-date">📅</label>
     <input type="date" id="event-date">
@@ -60,9 +50,9 @@
          src="https://sun9-81.userapi.com/impf/rcuLPGnzIPly7IQhX6MbA5TICbdWnl6AhMVSXQ/dFRCwb6vi5k.jpg?size=1818x606&quality=95&crop=0,21,1541,513&sign=34cbe06fb366638d9c7ca0693f1f83ef&type=cover_group"
          alt="Meow Records">
     <span id="burger">☰</span>
+    <!-- <span id="count"></span> -->
   </div>
 
-  <!-- Карта + сайдбар -->
   <div id="layout" style="display:flex;height:90vh;">
     <div id="map"></div>
 
@@ -81,18 +71,23 @@
     const JSON_URL     = 'events.json?v=20250730';
     const MAPTILER_KEY = 'QAuK0LSzMpyDV8I7iX6a';
 
-    /*  карта  */
     const map = new maplibregl.Map({
       container:'map',
-      style:`https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
+      style:`https://api.maptiler.com/maps/basic/style.json?key=${MAPTILER_KEY}`,
       center:[20.45,54.71],
       zoom:10
     });
+
     map.addControl(new maplibregl.NavigationControl(),'top-right');
     map.addControl(new maplibregl.GeolocateControl({
       positionOptions:{enableHighAccuracy:true},
       showUserLocation:true
     }),'top-right');
+
+    // Ускорение отрисовки карты
+    map.on('load', () => {
+      setTimeout(() => map.resize(), 100);
+    });
 
     let markers=[];
 
@@ -116,11 +111,10 @@
         clearMarkers();
         const todays=events.filter(e=>e.date===dateStr);
         todays.forEach(addMarker);
-        document.getElementById('count').textContent=todays.length;
+        // document.getElementById('count').textContent=todays.length;
         if(todays.length) map.flyTo({center:[todays[0].lon,todays[0].lat],zoom:12});
       }
 
-      /* сайдбар */
       const upcoming=events.filter(e=>new Date(e.date)>=new Date(today)).slice(0,100);
       const upDiv=document.getElementById('upcoming');
       if(!upcoming.length){upDiv.textContent='События не найдены';}
@@ -131,17 +125,16 @@
         d.onclick=()=>{
           render(e.date);
           setTimeout(()=>{
-          const m = markers.find(mk => {
-          const p = mk.getLngLat();
-          return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
-        });
-        if (m) {
-          map.flyTo({center: [e.lon, e.lat], zoom: 14});
-          m.togglePopup();
-        }
-      }, 100);
-
-          document.getElementById('sidebar').classList.remove('open'); // закрыть после выбора
+            const m = markers.find(mk => {
+              const p = mk.getLngLat();
+              return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
+            });
+            if (m) {
+              map.flyTo({center:[e.lon,e.lat],zoom:14});
+              m.togglePopup();
+            }
+            document.getElementById('sidebar').classList.remove('open');
+          },100);
         };
         upDiv.appendChild(d);
       });
@@ -153,10 +146,8 @@
       };
     });
 
-    /* бургер и крест */
-    const sidebar=document.getElementById('sidebar');
-    document.getElementById('burger').onclick=()=>sidebar.classList.toggle('open');
-    document.getElementById('closeSidebar').onclick=()=>sidebar.classList.remove('open');
+    document.getElementById('burger').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('closeSidebar').onclick=()=>document.getElementById('sidebar').classList.remove('open');
   </script>
 </body>
 </html>
