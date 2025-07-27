@@ -7,7 +7,7 @@
   <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
   <style>
     body { margin:0; font-family:sans-serif; }
-    #controls{
+    #controls {
       display:flex; align-items:center; gap:8px;
       padding:12px; background:#f7f7f7; border-bottom:1px solid #ccc;
     }
@@ -16,26 +16,42 @@
       width:300px; background:#fff; overflow-y:auto;
       padding:12px; font-size:14px; border-left:1px solid #ccc;
     }
-    #sidebar div.item{ margin-bottom:12px; cursor:pointer; border-bottom:1px dashed #ccc; padding-bottom:8px; }
-    #sidebar div.item:hover{ background:#f0f0f0; }
-    input[type=date]{ font-size:16px; }
-    .maplibregl-popup-content{ font-size:14px; line-height:1.3; }
-    #count{ margin-left:auto; font-weight:bold; }
+    #sidebar div.item {
+      margin-bottom:12px; cursor:pointer;
+      border-bottom:1px dashed #ccc; padding-bottom:8px;
+    }
+    #sidebar div.item:hover { background:#f0f0f0; }
+    input[type=date] { font-size:16px; }
+    .maplibregl-popup-content { font-size:14px; line-height:1.3; }
+    #count { margin-left:auto; font-weight:bold; }
+    #burger { display:none; cursor:pointer; font-size:24px; }
+
+    /* Адаптив для мобилок */
+    @media (max-width: 768px) {
+      #layout { flex-direction: column; }
+      #sidebar {
+        position: fixed; right: 0; top: 0; height: 100%;
+        transform: translateX(100%);
+        transition: transform .3s;
+        z-index: 999; box-shadow: -4px 0 6px rgba(0,0,0,.15);
+      }
+      #sidebar.open { transform: translateX(0); }
+      #burger { display: block; }
+    }
   </style>
 </head>
 
 <body>
-  <!-- панель управления -->
   <div id="controls">
-    <label for="event-date">📅 Дата:</label>
+    <label for="event-date">📅</label>
     <input type="date" id="event-date">
+    <span id="burger">☰</span>
     <img id="logo" src="https://sun9-81.userapi.com/impf/rcuLPGnzIPly7IQhX6MbA5TICbdWnl6AhMVSXQ/dFRCwb6vi5k.jpg?size=1818x606&quality=95&crop=0,21,1541,513&sign=34cbe06fb366638d9c7ca0693f1f83ef&type=cover_group"
          alt="Meow Records" style="height:32px;">
     <span id="count"></span>
   </div>
 
-  <!-- карта + сайдбар -->
-  <div style="display:flex; height:90vh;">
+  <div id="layout" style="display:flex; height:90vh;">
     <div id="map"></div>
     <div id="sidebar">
       <h3>Ближайшие события</h3>
@@ -45,97 +61,99 @@
 
   <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
   <script>
-    const JSON_URL    = 'events.json?v=20250728';          // обновляй v= при каждом пуше
+    const JSON_URL = 'events.json?v=20250729';
     const MAPTILER_KEY = 'QAuK0LSzMpyDV8I7iX6a';
 
-    /* карта */
     const map = new maplibregl.Map({
       container: 'map',
       style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`,
       center: [20.45, 54.71],
       zoom: 10
     });
-    map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    /* глобальный массив маркеров */
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
+    map.addControl(new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+      trackUserLocation: false,
+      showUserLocation: true
+    }), 'top-right');
+
     let markers = [];
 
-    function clearMarkers(){
-      markers.forEach(m=>m.remove());
+    function clearMarkers() {
+      markers.forEach(m => m.remove());
       markers = [];
     }
 
-    function addEventMarker(ev){
-      const popup  = new maplibregl.Popup({offset:25})
-                       .setHTML(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
+    function addEventMarker(ev) {
+      const popup = new maplibregl.Popup({ offset: 25 })
+        .setHTML(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
       const marker = new maplibregl.Marker()
-                       .setLngLat([ev.lon, ev.lat])
-                       .setPopup(popup)
-                       .addTo(map);
-      marker.__key = `${ev.date}|${ev.title}`;   // уникальный ключ
+        .setLngLat([ev.lon, ev.lat])
+        .setPopup(popup)
+        .addTo(map);
+      marker.__key = `${ev.date}|${ev.title}`;
       markers.push(marker);
     }
 
     fetch(JSON_URL)
-      .then(r=>r.json())
-      .then(events=>{
-        /* сортировка и границы календаря */
-        events.sort((a,b)=>a.date.localeCompare(b.date));
-        const input   = document.getElementById('event-date');
-        input.min     = events[0].date;
-        input.max     = events.at(-1).date;
-        const todayISO = new Date().toISOString().slice(0,10);
-        const first   = events.find(e=>e.date>=todayISO) ? todayISO : events[0].date;
-        input.value   = first;
+      .then(r => r.json())
+      .then(events => {
+        events.sort((a, b) => a.date.localeCompare(b.date));
+        const input = document.getElementById('event-date');
+        input.min = events[0].date;
+        input.max = events.at(-1).date;
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const first = events.find(e => e.date >= todayISO) ? todayISO : events[0].date;
+        input.value = first;
 
-        /* функция прорисовки карты по выбранной дате */
-        function updateMap(dateStr){
+        function updateMap(dateStr) {
           clearMarkers();
-          const todays = events.filter(e=>e.date===dateStr);
+          const todays = events.filter(e => e.date === dateStr);
           todays.forEach(addEventMarker);
           document.getElementById('count').textContent = todays.length;
-          if(todays.length){
-            map.flyTo({center:[todays[0].lon, todays[0].lat], zoom:12});
+          if (todays.length) {
+            map.flyTo({ center: [todays[0].lon, todays[0].lat], zoom: 12 });
           }
         }
 
-        /* построение сайдбара (до 100 будущих) */
+        // Боковая панель: до 100 ближайших событий
         const upcomingDiv = document.getElementById('upcoming');
         const upcoming = events
-          .filter(e=>new Date(e.date) >= new Date(todayISO))
-          .slice(0,100);
+          .filter(e => new Date(e.date) >= new Date(todayISO))
+          .slice(0, 100);
 
-        if(upcoming.length===0){
-          upcomingDiv.innerHTML='<p>Пока нет предстоящих событий</p>';
-        }else{
-          upcoming.forEach(e=>{
+        if (upcoming.length === 0) {
+          upcomingDiv.innerHTML = '<p>Пока нет предстоящих событий</p>';
+        } else {
+          upcoming.forEach(e => {
             const item = document.createElement('div');
-            item.className='item';
-            item.innerHTML=`<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
-            item.addEventListener('click', ()=>{
-              /* сначала показываем маркеры той даты */
+            item.className = 'item';
+            item.innerHTML = `<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
+            item.addEventListener('click', () => {
               updateMap(e.date);
-
-              /* ищем нужный маркер и открываем его */
-              const m = markers.find(mk=>Math.abs(mk.getLngLat().lat - e.lat)<1e-5 &&
-                                         Math.abs(mk.getLngLat().lng - e.lon)<1e-5);
-              if(m){
-                m.togglePopup();
-              }
-              map.flyTo({center:[e.lon, e.lat], zoom:14});
+              const m = markers.find(mk =>
+                Math.abs(mk.getLngLat().lat - e.lat) < 1e-5 &&
+                Math.abs(mk.getLngLat().lng - e.lon) < 1e-5);
+              if (m) m.togglePopup();
+              map.flyTo({ center: [e.lon, e.lat], zoom: 14 });
             });
             upcomingDiv.appendChild(item);
           });
         }
 
-        /* первая отрисовка */
         updateMap(first);
-        input.addEventListener('change', ev=>{
-          const sel = new Date(ev.target.value).toISOString().slice(0,10);
+        input.addEventListener('change', ev => {
+          const sel = new Date(ev.target.value).toISOString().slice(0, 10);
           updateMap(sel);
         });
       })
-      .catch(err=>console.error('Не удалось загрузить events.json', err));
+      .catch(err => console.error('Не удалось загрузить events.json', err));
+
+    // Гамбургер-кнопка
+    document.getElementById('burger').onclick = () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    };
   </script>
 </body>
 </html>
