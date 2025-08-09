@@ -1,0 +1,6 @@
+requests>=2.31
+geopy>=2.4
+rapidfuzz>=3.6
+jsonschema>=4.23
+python-dateutil>=2.9
+Unidecode>=1.3
