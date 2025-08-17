@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MeowAfisha.Event",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "start",
+    "timezone",
+    "status",
+    "lat",
+    "lon",
+    "source",
+    "source_url",
+    "updated_at",
+    "schema_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2.0.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "timezone": {
+      "type": "string",
+      "const": "Europe/Kaliningrad"
+    },
+    "time_unknown": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "postponed",
+        "cancelled"
+      ]
+    },
+    "venue_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "venue_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "address": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lat": {
+      "type": "number"
+    },
+    "lon": {
+      "type": "number"
+    },
+    "geo_accuracy": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "exact",
+        "approx",
+        "fallback"
+      ],
+      "default": "approx"
+    },
+    "geocoder": {
+      "type": "string",
+      "enum": [
+        "arcgis",
+        "nominatim",
+        "manual",
+        "cache",
+        "override"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "vk"
+      ]
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "price": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "age": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
