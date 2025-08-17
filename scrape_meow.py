@@ -2,9 +2,10 @@
 import re, time, requests, pandas as pd
 from geopy.geocoders import ArcGIS
 from geopy.extra.rate_limiter import RateLimiter
+import os
 
 # ─────────────────────── НАСТРОЙКИ ───────────────────────
-TOKEN        = "vk1.a.az68uTKtqRoSRW7ud6qQBHBYEDX-IoB3n-raywQhtxBEfNEsIncINjLHPtxM6GA0lLaf_FjOY9H89xHnTq3c65AtgZzZ4BNxzgC8ThX56PY52S8yf3cZxbS4Utojhi83OiCUofSgsuBRXJldpIHtzuO70BBV8wR1DM9bdSMUhknZ7kb1e6ib9XBG2vnJSjXjhQ76en7c7VDcIMv-PqeCfQ"   # ← вставь свой
+TOKEN        = os.getenv("VK_TOKEN")
 DOMAIN       = "meowrecords"       # паблик ВК
 MAX_POSTS    = 2000                # сколько всего тянуть (offset’ами)
 BATCH        = 100                 # максимум за 1 вызов API
@@ -63,3 +64,4 @@ print(f"С координатами: {len(df)} | без координат: {bad
 df[["title","date","location","lat","lon"]].to_json(
     "events.json", orient="records", force_ascii=False, indent=2)
 print("✅  events.json создан")
+
