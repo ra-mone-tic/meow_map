@@ -2,6 +2,7 @@
 import re, time, requests, pandas as pd
 from geopy.geocoders import ArcGIS
 from geopy.extra.rate_limiter import RateLimiter
+import os
 
 # ─────────────────────── НАСТРОЙКИ ───────────────────────
 TOKEN        = os.getenv("VK_TOKEN")
