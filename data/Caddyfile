@@ -1,0 +1,6 @@
+# замените на ваш домен API
+ 
+### api.meowmap.ru {
+    encode gzip
+    reverse_proxy api:8000
+}

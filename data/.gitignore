@@ -1,0 +1,5 @@
+.env
+logs/*
+!logs/.gitkeep
+caddy_data/
+caddy_config/
