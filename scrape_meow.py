@@ -6,7 +6,7 @@ import os
 
 # ─────────────────────── НАСТРОЙКИ ───────────────────────
 TOKEN        = os.getenv("VK_TOKEN")
-DOMAIN       = "meowrecords"       # паблик ВК
+DOMAIN       = "meowafisha"       # паблик ВК
 MAX_POSTS    = 2000                # сколько всего тянуть (offset’ами)
 BATCH        = 100                 # максимум за 1 вызов API
 WAIT_REQ     = 1.1                 # пауза между вызовами wall.get  (1 rps)
@@ -28,7 +28,7 @@ def extract(text: str):
         return None
     date  = f"{YEAR_DEFAULT}-{m_date.group(2)}-{m_date.group(1)}"
     loc   = m_loc.group(1).split('➡️')[0].strip()
-    if not re.search(r"(калининград|гурьевск|светлогорск|янтарный)", loc, re.I):
+    if not re.search(r"(калининград|гурьевск|светлогорск|янтарный|балтийск)", loc, re.I):
         loc += ", Калининград"
     title = re.sub(r"^\d{2}\.\d{2}\s*\|\s*", "", text.split('\n')[0]).strip()
     return dict(title=title, date=date, location=loc)
