@@ -2,10 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>MeowMap — карта мероприятий</title>
+  <title>MeowAfisha — карта мероприятий</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet"/>
   <style>
+    :root { --panel-w: 320px; }
+
     body{margin:0;font-family:sans-serif;}
     #controls{
       display:flex;align-items:center;gap:8px;
@@ -13,33 +15,31 @@
     }
     input[type=date]{font-size:16px;}
     #logo{height:32px;}
-    #burger{cursor:pointer;font-size:26px;}
-    #count{margin-left:8px;font-weight:bold;}
+    #burger{cursor:pointer;font-size:26px;margin-left:auto;display:block;} /* Всегда показываем бургер */
     #map{flex:1;}
+
+    /* Сайдбар — теперь оверлей для всех размеров экрана */
     #sidebar{
-      width:300px;background:#fff;overflow-y:auto;
-      padding:12px;font-size:14px;border-left:1px solid #ccc;
+      position:fixed;right:0;top:0;height:100vh;width:var(--panel-w);
+      background:#fff;overflow-y:auto;
+      padding:12px;font-size:14px;
+      box-shadow:-4px 0 6px rgba(0,0,0,.15);
+      transform:translateX(100%);          /* по умолчанию закрыт */
+      transition:transform .3s ease;
+      z-index:999;
+      border-left:1px solid #ccc;
     }
+    #sidebar.open{ transform:translateX(0); }
+
     #sidebar div.item{
       margin-bottom:12px;cursor:pointer;
       border-bottom:1px dashed #ccc;padding-bottom:8px;
     }
     #sidebar div.item:hover{background:#f0f0f0;}
     #closeSidebar{cursor:pointer;font-size:22px;font-weight:bold;}
-    @media(max-width:768px){
-      #layout{flex-direction:column;}
-      #sidebar{
-    position:fixed; right:0; top:0; height:100%;
-    width:300px; background:#fff; overflow-y:auto;
-    padding:12px; font-size:14px; border-left:1px solid #ccc;
-    transform:translateX(100%);           /* закрыто по умолчанию */
-    transition:transform .3s;
-    z-index:999; box-shadow:-4px 0 6px rgba(0,0,0,.15);
-}
-#sidebar.open{ transform:translateX(0); }
-      #burger{display:block; margin-left:auto; cursor:pointer; font-size:26px;}
-      #count{display:none;}
-    }
+
+    /* Контейнер карты во всю высоту окна (минус панель управления) */
+    #layout{display:flex;height:calc(100vh - 58px);}
   </style>
 </head>
 <body>
@@ -51,16 +51,15 @@
          src="https://sun9-81.userapi.com/impf/rcuLPGnzIPly7IQhX6MbA5TICbdWnl6AhMVSXQ/dFRCwb6vi5k.jpg?size=1818x606&quality=95&crop=0,21,1541,513&sign=34cbe06fb366638d9c7ca0693f1f83ef&type=cover_group"
          alt="Meow Records">
     <span id="burger">☰</span>
-    <!-- <span id="count"></span> -->
   </div>
 
-  <div id="layout" style="display:flex;height:90vh;">
+  <div id="layout">
     <div id="map"></div>
 
-    <div id="sidebar">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div id="sidebar" aria-hidden="true">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
         <h3 style="margin:0;">Ближайшие события</h3>
-        <span id="closeSidebar">✕</span>
+        <span id="closeSidebar" title="Закрыть">✕</span>
       </div>
       <hr>
       <div id="upcoming"></div>
@@ -72,6 +71,22 @@
     const JSON_URL     = 'events.json?v=20250730';
     const MAPTILER_KEY = 'QAuK0LSzMpyDV8I7iX6a';
 
+    // === ИНИЦИАЛИЗАЦИЯ UI — сразу, до загрузки данных ===
+    const sidebarEl = document.getElementById('sidebar');
+    const burgerEl  = document.getElementById('burger');
+    const closeEl   = document.getElementById('closeSidebar');
+
+    function openSidebar(){ sidebarEl.classList.add('open');  sidebarEl.setAttribute('aria-hidden','false'); }
+    function closeSidebar(){ sidebarEl.classList.remove('open'); sidebarEl.setAttribute('aria-hidden','true'); }
+    function toggleSidebar(){ sidebarEl.classList.toggle('open'); sidebarEl.setAttribute('aria-hidden', sidebarEl.classList.contains('open') ? 'false' : 'true'); }
+
+    burgerEl.onclick = toggleSidebar;
+    closeEl.onclick  = closeSidebar;
+
+    // Закрытие по ESC
+    window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeSidebar(); });
+
+    // === КАРТА ===
     const map = new maplibregl.Map({
       container:'map',
       style:`https://api.maptiler.com/maps/basic/style.json?key=${MAPTILER_KEY}`,
@@ -86,13 +101,12 @@
     }),'top-right');
 
     // Ускорение отрисовки карты
-    map.on('load', () => {
-      setTimeout(() => map.resize(), 100);
-    });
+    map.on('load', () => { setTimeout(() => map.resize(), 100); });
 
+    // === ДАННЫЕ ===
     let markers=[];
 
-    function clearMarkers(){markers.forEach(m=>m.remove());markers=[];}
+    function clearMarkers(){ markers.forEach(m=>m.remove()); markers=[]; }
     function addMarker(ev){
       const pop=new maplibregl.Popup({offset:25})
         .setHTML(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
@@ -100,55 +114,78 @@
       markers.push(m);
     }
 
-    fetch(JSON_URL).then(r=>r.json()).then(events=>{
-      events.sort((a,b)=>a.date.localeCompare(b.date));
-      const input=document.getElementById('event-date');
-      input.min=events[0].date;input.max=events.at(-1).date;
-      const today=new Date().toISOString().slice(0,10);
-      const first=events.find(e=>e.date>=today)?today:events[0].date;
-      input.value=first;
+    async function loadEvents(){
+      try{
+        const r = await fetch(JSON_URL, { cache:'no-store' });
+        if(!r.ok) return [];
+        const data = await r.json();
+        return Array.isArray(data) ? data : [];
+      }catch(err){
+        console.warn('events.json load failed:', err);
+        return [];
+      }
+    }
 
-      function render(dateStr){
-        clearMarkers();
-        const todays=events.filter(e=>e.date===dateStr);
-        todays.forEach(addMarker);
-        // document.getElementById('count').textContent=todays.length;
-        if(todays.length) map.flyTo({center:[todays[0].lon,todays[0].lat],zoom:12});
+    function renderForDate(events, dateStr){
+      clearMarkers();
+      const todays = events.filter(e => e.date === dateStr);
+      todays.forEach(addMarker);
+      if(todays.length){
+        map.flyTo({center:[todays[0].lon,todays[0].lat],zoom:12});
+      }
+    }
+
+    (async function bootstrap(){
+      const events = await loadEvents();
+
+      if(!events.length){
+        document.getElementById('upcoming').textContent = 'События не найдены';
+        return; // UI остаётся рабочим (бургер/закрытие)
       }
 
-      const upcoming=events.filter(e=>new Date(e.date)>=new Date(today)).slice(0,100);
-      const upDiv=document.getElementById('upcoming');
-      if(!upcoming.length){upDiv.textContent='События не найдены';}
-      else upcoming.forEach(e=>{
-        const d=document.createElement('div');
-        d.className='item';
-        d.innerHTML=`<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
-        d.onclick=()=>{
-          render(e.date);
-          setTimeout(()=>{
-            const m = markers.find(mk => {
-              const p = mk.getLngLat();
-              return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
-            });
-            if (m) {
-              map.flyTo({center:[e.lon,e.lat],zoom:14});
-              m.togglePopup();
-            }
-            document.getElementById('sidebar').classList.remove('open');
-          },100);
-        };
-        upDiv.appendChild(d);
-      });
+      events.sort((a,b)=>a.date.localeCompare(b.date));
 
-      render(first);
-      input.onchange=ev=>{
+      const input  = document.getElementById('event-date');
+      input.min    = events[0].date;
+      input.max    = events.at(-1).date;
+
+      const today  = new Date().toISOString().slice(0,10);
+      const firstExisting = (events.find(e=>e.date>=today)?.date) || events[0].date;
+      input.value  = firstExisting;
+
+      const upDiv = document.getElementById('upcoming');
+      const upcoming = events.filter(e => e.date >= today).slice(0,100);
+      if(!upcoming.length){
+        upDiv.textContent='Скоро событий нет';
+      } else {
+        upcoming.forEach(e=>{
+          const d=document.createElement('div');
+          d.className='item';
+          d.innerHTML=`<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
+          d.onclick=()=>{
+            renderForDate(events, e.date);
+            setTimeout(()=>{
+              const m = markers.find(mk => {
+                const p = mk.getLngLat();
+                return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
+              });
+              if (m) {
+                map.flyTo({center:[e.lon,e.lat],zoom:14});
+                m.togglePopup();
+              }
+              closeSidebar();
+            },100);
+          };
+          upDiv.appendChild(d);
+        });
+      }
+
+      renderForDate(events, firstExisting);
+      input.onchange = ev => {
         const d=new Date(ev.target.value).toISOString().slice(0,10);
-        render(d);
+        renderForDate(events, d);
       };
-    });
-
-    document.getElementById('burger').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
-    document.getElementById('closeSidebar').onclick=()=>document.getElementById('sidebar').classList.remove('open');
+    })();
   </script>
 </body>
 </html>
