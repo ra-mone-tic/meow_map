@@ -149,14 +149,22 @@
       input.min    = events[0].date;
       input.max    = events.at(-1).date;
 
-      const today  = new Date().toISOString().slice(0,10);
-      const firstExisting = (events.find(e=>e.date>=today)?.date) || events[0].date;
-      input.value  = firstExisting;
+      const today = new Date().toISOString().slice(0,10);
+
+      // ограничим today границами календаря
+      if (today < input.min) {
+        input.value = input.min;
+      } else if (today > input.max) {
+        input.value = input.max;
+      } else {
+        input.value = today;
+      }
+
 
       const upDiv = document.getElementById('upcoming');
       const upcoming = events.filter(e => e.date >= today).slice(0,100);
       if(!upcoming.length){
-        upDiv.textContent='Скоро событий нет';
+        upDiv.textContent='событий нет';
       } else {
         upcoming.forEach(e=>{
           const d=document.createElement('div');
