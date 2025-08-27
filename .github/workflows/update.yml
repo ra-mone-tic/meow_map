@@ -2,7 +2,7 @@ name: Update events.json
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # каждые 6ч
+    - cron: "0 */3 * * *"   # каждые 3ч
   workflow_dispatch:
 
 jobs:
