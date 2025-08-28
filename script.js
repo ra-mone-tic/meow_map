@@ -85,3 +85,8 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
 // ===== UI: Бургер / Закрыть =====
 document.getElementById('burger').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
 document.getElementById('closeSidebar').onclick=()=>document.getElementById('sidebar').classList.remove('open');
+
+// страхуем от ленивой отрисовки
+window.addEventListener('resize', () => map.resize());
+window.addEventListener('orientationchange', () => setTimeout(() => map.resize(), 80));
+requestAnimationFrame(() => map.resize()); // один раз после первого кадра
