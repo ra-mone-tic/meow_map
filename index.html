@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+  <!-- ===== META ===== -->
   <meta charset="utf-8">
   <title>MeowMap🐾</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ===== STYLES/ASSETS ===== -->
   <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet"/>
+
   <style>
+    /* ===== БАЗОВЫЕ СТИЛИ ===== */
     body{margin:0;font-family:sans-serif;}
     #controls{
       display:flex;align-items:center;gap:8px;
@@ -16,33 +21,56 @@
     #burger{cursor:pointer;font-size:26px;}
     #count{margin-left:8px;font-weight:bold;}
     #map{flex:1;}
+
+    /* ===== SIDEBAR: базовое закрытое состояние (ИЗМЕНЕНО) ===== */
     #sidebar{
       width:300px;background:#fff;overflow-y:auto;
       padding:12px;font-size:14px;border-left:1px solid #ccc;
+      position:fixed;right:0;top:0;height:100%;
+      transform:translateX(100%);                 /* скрыт по умолчанию */
+      transition:transform .3s;
+      z-index:999;box-shadow:-4px 0 6px rgba(0,0,0,.15);
     }
+    /* Открытое состояние — глобально, для всех ширин (ИЗМЕНЕНО) */
+    #sidebar.open{transform:translateX(0);}
+
     #sidebar div.item{
       margin-bottom:12px;cursor:pointer;
       border-bottom:1px dashed #ccc;padding-bottom:8px;
     }
     #sidebar div.item:hover{background:#f0f0f0;}
     #closeSidebar{cursor:pointer;font-size:22px;font-weight:bold;}
+
+    /* Бургер скрыт по умолчанию, на мобилках покажем */
     #burger{display:none;}
-    @media(max-width:768px){
-      #layout{flex-direction:column;}
+
+    /* ===== ДЕСКТОП: возвращаем сайдбар в поток (ИЗМЕНЕНО) ===== */
+    @media (min-width:769px){
+      #layout{display:flex;}         /* страхуемся, если уберёшь inline-style */
+      #map{flex:1;}
       #sidebar{
-        position:fixed;right:0;top:0;height:100%;
-        transform:translateX(100%);
-        transition:transform .3s;
-        z-index:999;box-shadow:-4px 0 6px rgba(0,0,0,.15);
+        position:static;height:auto;
+        transform:none;box-shadow:none; /* колонка видима */
       }
-      #sidebar.open{transform:translateX(0);}
+      #burger{display:none;}
+      #count{display:inline;}
+    }
+
+    /* ===== МОБИЛКИ/ПЛАНШЕТЫ ===== */
+    @media (max-width:768px){
+      #layout{flex-direction:column;}
       #burger{display:block;margin-left:auto;}
       #count{display:none;}
     }
   </style>
+
+  <!-- ===== SCRIPTS (defer) ===== -->
+  <script defer src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+  <script defer src="script.js"></script>
 </head>
 <body>
 
+  <!-- ===== UI: ПАНЕЛЬ УПРАВЛЕНИЯ ===== -->
   <div id="controls">
     <label for="event-date">📅</label>
     <input type="date" id="event-date">
@@ -53,6 +81,7 @@
     <!-- <span id="count"></span> -->
   </div>
 
+  <!-- ===== LAYOUT: КАРТА + САЙДБАР ===== -->
   <div id="layout" style="display:flex;height:90vh;">
     <div id="map"></div>
 
@@ -65,89 +94,5 @@
       <div id="upcoming"></div>
     </div>
   </div>
-
-  <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
-  <script>
-    const JSON_URL = 'events.json?v=' + Date.now(); // кэш не мешает обновлениям
-    const MAPTILER_KEY = 'QAuK0LSzMpyDV8I7iX6a';
-
-    const map = new maplibregl.Map({
-      container:'map',
-      style:`https://api.maptiler.com/maps/basic/style.json?key=${MAPTILER_KEY}`,
-      center:[20.45,54.71],
-      zoom:10
-    });
-
-    map.addControl(new maplibregl.NavigationControl(),'top-right');
-    map.addControl(new maplibregl.GeolocateControl({
-      positionOptions:{enableHighAccuracy:true},
-      showUserLocation:true
-    }),'top-right');
-
-    // Ускорение отрисовки карты
-    map.on('load', () => {
-      setTimeout(() => map.resize(), 100);
-    });
-
-    let markers=[];
-
-    function clearMarkers(){markers.forEach(m=>m.remove());markers=[];}
-    function addMarker(ev){
-      const pop=new maplibregl.Popup({offset:25})
-        .setHTML(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
-      const m=new maplibregl.Marker().setLngLat([ev.lon,ev.lat]).setPopup(pop).addTo(map);
-      markers.push(m);
-    }
-
-    fetch(JSON_URL).then(r=>r.json()).then(events=>{
-      events.sort((a,b)=>a.date.localeCompare(b.date));
-      const input=document.getElementById('event-date');
-      input.min=events[0].date;input.max=events.at(-1).date;
-      const today=new Date().toISOString().slice(0,10);
-      const first=events.find(e=>e.date>=today)?today:events[0].date;
-      input.value=first;
-
-      function render(dateStr){
-        clearMarkers();
-        const todays=events.filter(e=>e.date===dateStr);
-        todays.forEach(addMarker);
-        // document.getElementById('count').textContent=todays.length;
-        if(todays.length) map.flyTo({center:[todays[0].lon,todays[0].lat],zoom:12});
-      }
-
-      const upcoming=events.filter(e=>new Date(e.date)>=new Date(today)).slice(0,100);
-      const upDiv=document.getElementById('upcoming');
-      if(!upcoming.length){upDiv.textContent='События не найдены';}
-      else upcoming.forEach(e=>{
-        const d=document.createElement('div');
-        d.className='item';
-        d.innerHTML=`<strong>${e.title}</strong><br>${e.location}<br><i>${e.date}</i>`;
-        d.onclick=()=>{
-          render(e.date);
-          setTimeout(()=>{
-            const m = markers.find(mk => {
-              const p = mk.getLngLat();
-              return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
-            });
-            if (m) {
-              map.flyTo({center:[e.lon,e.lat],zoom:14});
-              m.togglePopup();
-            }
-            document.getElementById('sidebar').classList.remove('open');
-          },100);
-        };
-        upDiv.appendChild(d);
-      });
-
-      render(first);
-      input.onchange=ev=>{
-        const d=new Date(ev.target.value).toISOString().slice(0,10);
-        render(d);
-      };
-    });
-
-    document.getElementById('burger').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
-    document.getElementById('closeSidebar').onclick=()=>document.getElementById('sidebar').classList.remove('open');
-  </script>
 </body>
 </html>
