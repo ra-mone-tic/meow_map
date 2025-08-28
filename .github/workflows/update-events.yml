@@ -1,0 +1,53 @@
+name: Update events.json
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'   # каждые 3 часа (UTC)
+  workflow_dispatch: {}      # возможность запустить руками из Actions
+
+permissions:
+  contents: write            # нужно, чтобы коммитить изменения
+
+concurrency:
+  group: update-events
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate events.json
+        env:
+          VK_TOKEN: ${{ secrets.VK_TOKEN }}  
+        run: |
+          python scripts/fetch_events.py
+
+      - name: Commit changes (if any)
+        run: |
+          git config user.name  "meowmap-bot"
+          git config user.email "actions@github.com"
+
+          # добавим и events.json, и кэш геокодинга
+          git add events.json geocode_cache.json || true
+
+          if git diff --staged --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+
+          git commit -m "chore: update events.json [skip ci]"
+          git push

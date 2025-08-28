@@ -68,7 +68,7 @@
 
   <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
   <script>
-    const JSON_URL     = 'events.json?v=20250730';
+    const JSON_URL = 'events.json?v=' + Date.now(); // кэш не мешает обновлениям
     const MAPTILER_KEY = 'QAuK0LSzMpyDV8I7iX6a';
 
     const map = new maplibregl.Map({
