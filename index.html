@@ -24,7 +24,7 @@
     #map{flex:1; width:100%; height:100%;}
 
 
-    /* ===== SIDEBAR: базовое закрытое состояние (ИЗМЕНЕНО) ===== */
+    /* ===== SIDEBAR: базовое закрытое состояние ===== */
     #sidebar{
       width:300px;background:#fff;overflow-y:auto;
       padding:12px;font-size:14px;border-left:1px solid #ccc;
@@ -33,7 +33,7 @@
       transition:transform .3s;
       z-index:999;box-shadow:-4px 0 6px rgba(0,0,0,.15);
     }
-    /* Открытое состояние — глобально, для всех ширин (ИЗМЕНЕНО) */
+    /* Открытое состояние — глобально */
     #sidebar.open{transform:translateX(0);}
 
     #sidebar div.item{
@@ -43,18 +43,15 @@
     #sidebar div.item:hover{background:#f0f0f0;}
     #closeSidebar{cursor:pointer;font-size:22px;font-weight:bold;}
 
-    /* Бургер скрыт по умолчанию, на мобилках покажем */
+    /* Бургер скрыт по умолчанию, покажем в медиа */
     #burger{display:none;}
 
-    /* ===== ДЕСКТОП: возвращаем сайдбар в поток (ИЗМЕНЕНО) ===== */
+    /* ===== ДЕСКТОП ===== */
     @media (min-width:769px){
-      #layout{display:flex;}         /* страхуемся, если уберёшь inline-style */
+      #layout{display:flex;}
       #map{flex:1;}
-      #sidebar{
-        position:static;height:auto;
-        transform:none;box-shadow:none; /* колонка видима */
-      }
-      #burger{display:none;}
+      /* ВАЖНО: не трогаем transform/position у #sidebar на десктопе */
+      #burger{display:block;margin-left:auto;}   /* бургер доступен и тут */
       #count{display:inline;}
     }
 
