@@ -1,6 +1,10 @@
 // ===== КОНСТАНТЫ/НАСТРОЙКИ =====
 const JSON_URL = 'events.json?v=' + Date.now();
-const MAPTILER_KEY = 'QAuK0LSzMpyDV8I7iX6a';
+const MAPTILER_KEY = (typeof process !== 'undefined' && process.env && process.env.MAPTILER_KEY) || globalThis.MAPTILER_KEY || '';
+
+if (!MAPTILER_KEY) {
+  console.warn('MAPTILER_KEY is not defined. Set it in config.js or as environment variable.');
+}
 
 // ===== КАРТА =====
 const map = new maplibregl.Map({
@@ -8,6 +12,14 @@ const map = new maplibregl.Map({
   style:`https://api.maptiler.com/maps/basic/style.json?key=${MAPTILER_KEY}`,
   center:[20.45,54.71],
   zoom:10
+});
+
+let styleErrorShown = false;
+map.on('error', e => {
+  if (styleErrorShown) return;
+  styleErrorShown = true;
+  console.error('Map style load error', e.error);
+  alert('Не удалось загрузить стиль карты. Проверьте ключ MapTiler и подключение к интернету.');
 });
 
 map.addControl(new maplibregl.NavigationControl(),'top-right');
@@ -80,6 +92,12 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
     const d=new Date(ev.target.value).toISOString().slice(0,10);
     render(d);
   };
+}).catch(err=>{
+  console.error('Ошибка загрузки данных', err);
+  clearMarkers();
+  const upDiv=document.getElementById('upcoming');
+  upDiv.innerHTML='';
+  upDiv.textContent='Ошибка загрузки событий';
 });
 
 // ===== UI: Бургер / Закрыть =====

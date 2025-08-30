@@ -1,0 +1,1 @@
+window.MAPTILER_KEY = 'QAuK0LSzMpyDV8I7iX6a';

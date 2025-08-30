@@ -11,6 +11,7 @@
 
   <style>
     /* ===== БАЗОВЫЕ СТИЛИ ===== */
+    html,body{height:100%;}
     body{margin:0;font-family:sans-serif;}
     #controls{
       display:flex;align-items:center;gap:8px;
@@ -20,7 +21,7 @@
     #logo{height:32px;}
     #burger{cursor:pointer;font-size:26px;}
     #count{margin-left:8px;font-weight:bold;}
-    #map{flex:1;}
+    #layout{display:flex;height:100vh;height:100dvh;}
     #map{flex:1; width:100%; height:100%;}
 
 
@@ -64,9 +65,10 @@
   </style>
 
   <!-- ===== SCRIPTS (defer) ===== -->
-  <script defer src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
-  <script defer src="script.js"></script>
-</head>
+     <script defer src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+    <script defer src="config.js"></script>
+    <script defer src="script.js"></script>
+  </head>
 <body>
 
   <!-- ===== UI: ПАНЕЛЬ УПРАВЛЕНИЯ ===== -->
@@ -81,7 +83,7 @@
   </div>
 
   <!-- ===== LAYOUT: КАРТА + САЙДБАР ===== -->
-  <div id="layout" style="display:flex;height:100dvh;">
+  <div id="layout">
     <div id="map"></div>
 
     <div id="sidebar">
