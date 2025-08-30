@@ -2,15 +2,8 @@ name: Update events.json
 
 on:
   schedule:
-    - cron: '0 */3 * * *'   # каждые 3 часа (UTC)
-  workflow_dispatch: {}      # возможность запустить руками из Actions
-
-permissions:
-  contents: write            # нужно, чтобы коммитить изменения
-
-concurrency:
-  group: update-events
-  cancel-in-progress: false
+    - cron: "0 */6 * * *"   # каждые 6 часов
+  workflow_dispatch: {}
 
 jobs:
   build:
@@ -23,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install deps
         run: |
@@ -32,22 +25,26 @@ jobs:
 
       - name: Generate events.json
         env:
-          VK_TOKEN: ${{ secrets.VK_TOKEN }}  
+          VK_TOKEN: ${{ secrets.VK_TOKEN }}
+          # опционально: VK_DOMAIN, VK_MAX_POSTS, YEAR_DEFAULT — тоже можно вынести в Secrets/Vars
+          YANDEX_KEY: ${{ secrets.YANDEX_KEY }}
+          NOMINATIM_USER_AGENT: "meowafisha-bot"
+          ARCGIS_MIN_DELAY: "1.0"
+          YANDEX_MIN_DELAY: "1.0"
+          NOMINATIM_MIN_DELAY: "1.0"
+          GEOCODE_SAVE_LOG: "1"
         run: |
-          python scripts/fetch_events.py
+          python fetch_events.py
 
-      - name: Commit changes (if any)
+      - name: Commit & push changes (if any)
         run: |
-          git config user.name  "meowmap-bot"
-          git config user.email "actions@github.com"
-
-          # добавим и events.json, и кэш геокодинга
-          git add events.json geocode_cache.json || true
-
-          if git diff --staged --quiet; then
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update events.json & geocode cache"
+            git push
+          else
             echo "No changes."
-            exit 0
           fi
 
-          git commit -m "chore: update events.json [skip ci]"
-          git push

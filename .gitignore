@@ -1,2 +1,10 @@
 # Local configuration containing private MapTiler key
 config.js
+# приват/локалка
+.env
+*.env
+# логи
+geocode_log.json
+# системное
+__pycache__/
+*.pyc
