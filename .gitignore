@@ -6,3 +6,4 @@ geocode_log.json
 # системное
 __pycache__/
 *.pyc
+fix.patch
