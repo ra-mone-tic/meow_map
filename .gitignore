@@ -7,3 +7,5 @@ geocode_log.json
 __pycache__/
 *.pyc
 fix.patch
+.env.example
+.gitignore
