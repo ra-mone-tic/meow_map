@@ -34,7 +34,7 @@ jobs:
           NOMINATIM_MIN_DELAY: "1.0"
           GEOCODE_SAVE_LOG: "1"
         run: |
-          python scrape_meow.py
+          python fetch_events.py
 
       - name: Commit & push changes (if any)
         run: |
