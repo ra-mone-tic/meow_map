@@ -11,7 +11,7 @@ if (!MAPTILER_KEY) {
 // ===== КАРТА =====
 const map = new maplibregl.Map({
   container:'map',
-  style:`https://api.maptiler.com/maps/basic/style.json?key=${MAPTILER_KEY}`,
+  style:`https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`,
   center:[20.45,54.71],
   zoom:10
 });
