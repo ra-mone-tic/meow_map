@@ -20,8 +20,20 @@ let styleErrorShown = false;
 map.on('error', e => {
   if (styleErrorShown) return;
   styleErrorShown = true;
-  console.error('Map style load error', e.error);
-  alert('Не удалось загрузить стиль карты. Проверьте ключ MapTiler и подключение к интернету.');
+    const err = e && e.error;
+  const status = err && (err.status || err.statusCode);
+  const message = err && (err.message || err.statusText);
+  console.error(`Map style load error (${status}): ${message}`, err);
+
+  let userMsg = 'Не удалось загрузить стиль карты.';
+  if (status === 401 || status === 403) {
+    userMsg = 'Ключ MapTiler недействителен или истёк.';
+  } else if (status === 0 || !navigator.onLine) {
+    userMsg = 'Отсутствует подключение к интернету.';
+  } else {
+    userMsg += ' Проверьте ключ MapTiler и подключение к интернету.';
+  }
+  alert(userMsg);
 });
 
 map.addControl(new maplibregl.NavigationControl(),'top-right');
