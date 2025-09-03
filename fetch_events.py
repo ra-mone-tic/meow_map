@@ -20,6 +20,8 @@ except Exception:
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import pandas as pd
 from geopy.geocoders import ArcGIS, Yandex, Nominatim
 from geopy.extra.rate_limiter import RateLimiter
@@ -54,6 +56,12 @@ assert TOKEN, "VK_TOKEN не задан (секрет репозитория и�
 
 # ─────────── ИНИЦИАЛИЗАЦИЯ ───────────
 vk_url = "https://api.vk.ru/method/wall.get"
+
+session = requests.Session()
+retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], allowed_methods=["GET"])
+adapter = HTTPAdapter(max_retries=retry)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
 
 session = requests.Session()
 retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], allowed_methods=["GET"])

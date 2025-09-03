@@ -29,7 +29,15 @@ map.addControl(new maplibregl.GeolocateControl({
 }),'top-right');
 
 // Ускорение отрисовки карты
-map.on('load', () => { setTimeout(() => map.resize(), 100); });
+// helper для контроля частоты вызовов
+function debounce(fn, delay){
+  let t;
+  return (...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),delay);};
+}
+
+const resizeMap = debounce(()=>map.resize(),100);
+
+map.on('load', () => { setTimeout(resizeMap, 100); });
 
 // ===== МАРКЕРЫ =====
 let markers=[];
@@ -46,7 +54,7 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
   events.sort((a,b)=>a.date.localeCompare(b.date));
 
   const input=document.getElementById('event-date');
-  input.min=events[0].date; input.max=events.at(-1).date;
+  input.min=events[0].date; input.max=events[events.length-1].date;
 
   const today=new Date().toISOString().slice(0,10);
   const first=events.find(e=>e.date>=today)?today:events[0].date;
@@ -105,6 +113,6 @@ document.getElementById('burger').onclick=()=>document.getElementById('sidebar')
 document.getElementById('closeSidebar').onclick=()=>document.getElementById('sidebar').classList.remove('open');
 
 // страхуем от ленивой отрисовки
-window.addEventListener('resize', () => map.resize());
-window.addEventListener('orientationchange', () => setTimeout(() => map.resize(), 80));
-requestAnimationFrame(() => map.resize()); // один раз после первого кадра
+window.addEventListener('resize', resizeMap);
+window.addEventListener('orientationchange', resizeMap);
+requestAnimationFrame(resizeMap); // один раз после первого кадра
