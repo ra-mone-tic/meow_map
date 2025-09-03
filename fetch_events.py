@@ -57,17 +57,23 @@ assert TOKEN, "VK_TOKEN не задан (секрет репозитория и�
 # ─────────── ИНИЦИАЛИЗАЦИЯ ───────────
 vk_url = "https://api.vk.ru/method/wall.get"
 
-session = requests.Session()
-retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], allowed_methods=["GET"])
-adapter = HTTPAdapter(max_retries=retry)
-session.mount("https://", adapter)
-session.mount("http://", adapter)
+def init_session() -> requests.Session:
+    """Create a requests session with retry logic."""
+    sess = requests.Session()
+    retry = Retry(
+        total=3,
+        backoff_factor=0.5,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["GET"],
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    sess.mount("https://", adapter)
+    sess.mount("http://", adapter)
+    return sess
 
-session = requests.Session()
-retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], allowed_methods=["GET"])
-adapter = HTTPAdapter(max_retries=retry)
-session.mount("https://", adapter)
-session.mount("http://", adapter)
+
+session = init_session()
+
 
 # Геокодеры
 arcgis = ArcGIS(timeout=10)  # публичный ArcGIS, без ключа
@@ -150,7 +156,7 @@ def geocode_addr(addr: str):
     if addr in geocache:
         return geocache[addr]
 
-        for provider in GEOCODERS:
+    for provider in GEOCODERS:
         name, func = provider["name"], provider["func"]
         if not func:
             detail = "нет ключа" if name == "Yandex" else ""
@@ -165,7 +171,7 @@ def geocode_addr(addr: str):
                 return res
             _log(addr, name, False)
         except Exception as e:
-             _log(addr, name, False, f"err: {e}")
+            _log(addr, name, False, f"err: {e}")
 
     geocache[addr] = [None, None]
     return geocache[addr]
