@@ -1,5 +1,7 @@
 // ===== КОНСТАНТЫ/НАСТРОЙКИ =====
-const JSON_URL = 'events.json?v=' + Date.now();
+// Загружаем список событий без параметра для принудительного обновления,
+// чтобы браузер мог кэшировать данные и ускорять повторные загрузки.
+const JSON_URL = 'events.json';
 const MAPTILER_KEY = (typeof process !== 'undefined' && process.env && process.env.MAPTILER_KEY) || globalThis.MAPTILER_KEY || '';
 
 if (!MAPTILER_KEY) {
@@ -109,8 +111,14 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
 });
 
 // ===== UI: Бургер / Закрыть =====
-document.getElementById('burger').onclick=()=>document.getElementById('sidebar').classList.toggle('open');
-document.getElementById('closeSidebar').onclick=()=>document.getElementById('sidebar').classList.remove('open');
+const sidebar=document.getElementById('sidebar');
+const burger=document.getElementById('burger');
+burger.onclick=()=>sidebar.classList.toggle('open');
+document.getElementById('closeSidebar').onclick=()=>sidebar.classList.remove('open');
+document.addEventListener('click',e=>{
+  if(sidebar.classList.contains('open')&&!sidebar.contains(e.target)&&e.target!==burger)
+    sidebar.classList.remove('open');
+});
 
 // страхуем от ленивой отрисовки
 window.addEventListener('resize', resizeMap);
