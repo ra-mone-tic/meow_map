@@ -18,6 +18,8 @@ except Exception:
     pass
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import pandas as pd
 from geopy.geocoders import ArcGIS, Yandex, Nominatim
 from geopy.extra.rate_limiter import RateLimiter
@@ -51,7 +53,13 @@ LOG_FILE     = Path("geocode_log.json")      # в .gitignore
 assert TOKEN, "VK_TOKEN не задан (секрет репозитория или .env)"
 
 # ─────────── ИНИЦИАЛИЗАЦИЯ ───────────
-vk_url = "https://api.vk.com/method/wall.get"
+vk_url = "https://api.vk.ru/method/wall.get"
+
+session = requests.Session()
+retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504], allowed_methods=["GET"])
+adapter = HTTPAdapter(max_retries=retry)
+session.mount("https://", adapter)
+session.mount("http://", adapter)
 
 # Геокодеры
 arcgis = ArcGIS(timeout=10)  # публичный ArcGIS, без ключа
@@ -77,17 +85,23 @@ else:
 
 geolog = {}  # адрес → {'arcgis':..., 'yandex':..., 'nominatim':...}
 
-def vk_wall(offset: int):
+def vk_wall(offset: int, attempts: int = 3):
     params = dict(domain=DOMAIN, offset=offset, count=BATCH,
                   access_token=TOKEN, v="5.199")
-    r = requests.get(vk_url, params=params, timeout=20)
-    r.raise_for_status()
-    data = r.json()
-    if "error" in data:
-        raise RuntimeError(f"VK API error: {data['error']}")
-    return data["response"]["items"]
+    for attempt in range(1, attempts + 1):
+        try:
+            r = session.get(vk_url, params=params, timeout=20)
+            r.raise_for_status()
+            data = r.json()
+            if "error" in data:
+                raise RuntimeError(f"VK API error: {data['error']}")
+            return data["response"]["items"]
+        except Exception as e:
+            if attempt == attempts:
+                raise
+            time.sleep(WAIT_REQ)
 
-CITY_WORDS = r"(калининград|гурьевск|светлогорск|янтарный)"
+CITY_WORDS = r"(калининград|гурьевск|светлогорск|янтарный|зеленоградск|пионерский|балтийск|поселок|пос\.|г\.)"
 
 def extract(text: str):
     # дата ДД.ММ
@@ -221,3 +235,4 @@ if GEOCODE_SAVE_LOG:
         print(f"Не удалось сохранить {LOG_FILE}: {e}")
 
 print("✅  events.json создан/обновлён")
+session.close()
