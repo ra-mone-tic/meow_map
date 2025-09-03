@@ -85,6 +85,13 @@ arcgis_geocode    = RateLimiter(arcgis.geocode, min_delay_seconds=ARCGIS_MIN_DEL
 yandex_geocode    = RateLimiter(yandex.geocode, min_delay_seconds=YANDEX_MIN_DELAY) if yandex else None
 nominatim_geocode = RateLimiter(nominatim.geocode, min_delay_seconds=NOMINATIM_MIN_DELAY)
 
+# список провайдеров с их функциями геокодирования (в порядке приоритетов)
+GEOCODERS = [
+    {"name": "ArcGIS", "func": arcgis_geocode},
+    {"name": "Yandex", "func": yandex_geocode},
+    {"name": "Nominatim", "func": nominatim_geocode},
+]
+
 # Кэш адрес→[lat, lon]
 if CACHE_FILE.exists():
     geocache = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
@@ -143,104 +150,86 @@ def geocode_addr(addr: str):
     if addr in geocache:
         return geocache[addr]
 
-    # 1) ArcGIS
-    try:
-        loc = arcgis_geocode(addr)
-        if loc:
-            res = [loc.latitude, loc.longitude]
-            geocache[addr] = res
-            _log(addr, "ArcGIS", True, f"{res[0]:.6f},{res[1]:.6f}")
-            return res
-        _log(addr, "ArcGIS", False)
-    except Exception as e:
-        _log(addr, "ArcGIS", False, f"err: {e}")
-
-    # 2) Yandex (если есть ключ)
-    if yandex_geocode:
+        for provider in GEOCODERS:
+        name, func = provider["name"], provider["func"]
+        if not func:
+            detail = "нет ключа" if name == "Yandex" else ""
+            _log(addr, name, False, detail)
+            continue
         try:
-            loc = yandex_geocode(addr)
+            loc = func(addr)
             if loc:
                 res = [loc.latitude, loc.longitude]
                 geocache[addr] = res
-                _log(addr, "Yandex", True, f"{res[0]:.6f},{res[1]:.6f}")
+                _log(addr, name, True, f"{res[0]:.6f},{res[1]:.6f}")
                 return res
-            _log(addr, "Yandex", False)
+            _log(addr, name, False)
         except Exception as e:
-            _log(addr, "Yandex", False, f"err: {e}")
-    else:
-        _log(addr, "Yandex", False, "нет ключа")
+             _log(addr, name, False, f"err: {e}")
 
-    # 3) Nominatim
-    try:
-        loc = nominatim_geocode(addr)
-        if loc:
-            res = [loc.latitude, loc.longitude]
-            geocache[addr] = res
-            _log(addr, "Nominatim", True, f"{res[0]:.6f},{res[1]:.6f}")
-            return res
-        _log(addr, "Nominatim", False)
-    except Exception as e:
-        _log(addr, "Nominatim", False, f"err: {e}")
-
-    # Итог: не нашли
     geocache[addr] = [None, None]
     return geocache[addr]
 
-# ─────────── СБОР ПОСТОВ ───────────
-records, off = [], 0
-while off < MAX_POSTS:
-    items = vk_wall(off)
-    if not items:
-        break
-    for it in items:
-        text = it.get("text") or ""
-        evt = extract(text)
-        if evt:
-            records.append(evt)
-    off += BATCH
-    time.sleep(WAIT_REQ)
+def main():
+    # ─────────── СБОР ПОСТОВ ───────────
+    records, off = [], 0
+    while off < MAX_POSTS:
+        items = vk_wall(off)
+        if not items:
+            break
+        for it in items:
+            text = it.get("text") or ""
+            evt = extract(text)
+            if evt:
+                records.append(evt)
+        off += BATCH
+        time.sleep(WAIT_REQ)
 
-print("Анонсов найдено:", len(records))
-if not records:
-    OUTPUT_JSON.write_text("[]", encoding="utf-8")
-    sys.exit(0)
+    print("Анонсов найдено:", len(records))
+    if not records:
+        OUTPUT_JSON.write_text("[]", encoding="utf-8")
+        sys.exit(0)
 
-df = pd.DataFrame(records).drop_duplicates()
+    df = pd.DataFrame(records).drop_duplicates()
 
-# ─────────── ГЕОКОДИНГ ───────────
-lats, lons = [], []
-for addr in df["location"]:
-    lat, lon = geocode_addr(addr)
-    lats.append(lat); lons.append(lon)
+    # ─────────── ГЕОКОДИНГ ───────────
+    lats, lons = [], []
+    for addr in df["location"]:
+        lat, lon = geocode_addr(addr)
+        lats.append(lat); lons.append(lon)
 
-df["lat"] = lats; df["lon"] = lons
+    df["lat"] = lats; df["lon"] = lons
 
-bad = df[df["lat"].isna()]
-bad_cnt = int(bad.shape[0])
-if bad_cnt:
-    missed = ", ".join(sorted(set(map(str, bad["location"].tolist()))))
-    print(f"⚠️  Не найдены координаты для {bad_cnt} адрес(ов): {missed[:800]}{' …' if len(missed)>800 else ''}")
+    bad = df[df["lat"].isna()]
+    bad_cnt = int(bad.shape[0])
+    if bad_cnt:
+        missed = ", ".join(sorted(set(map(str, bad["location"].tolist()))))
+        print(f"⚠️  Не найдены координаты для {bad_cnt} адрес(ов): {missed[:800]}{' …' if len(missed)>800 else ''}")
 
-# фильтруем точки без координат из отдачи на фронт
-df = df.dropna(subset=["lat", "lon"])
+    # фильтруем точки без координат из отдачи на фронт
+    df = df.dropna(subset=["lat", "lon"])
 
-print(f"С координатами: {len(df)} | без координат: {bad_cnt}")
+    print(f"С координатами: {len(df)} | без координат: {bad_cnt}")
 
-# ─────────── СОХРАНЕНИЕ ───────────
-df = df[["title","date","location","lat","lon"]].sort_values("date")
-OUTPUT_JSON.write_text(
-    df.to_json(orient="records", force_ascii=False, indent=2),
-    encoding="utf-8"
-)
+    # ─────────── СОХРАНЕНИЕ ───────────
+    df = df[["title","date","location","lat","lon"]].sort_values("date")
+    OUTPUT_JSON.write_text(
+        df.to_json(orient="records", force_ascii=False, indent=2),
+        encoding="utf-8"
+    )
 
-# кэш сохраняем всегда — экономит лимиты
-CACHE_FILE.write_text(json.dumps(geocache, ensure_ascii=False, indent=2), encoding="utf-8")
+    # кэш сохраняем всегда — экономит лимиты
+    CACHE_FILE.write_text(json.dumps(geocache, ensure_ascii=False, indent=2), encoding="utf-8")
 
-if GEOCODE_SAVE_LOG:
-    try:
-        LOG_FILE.write_text(json.dumps(geolog, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception as e:
-        print(f"Не удалось сохранить {LOG_FILE}: {e}")
+    if GEOCODE_SAVE_LOG:
+        try:
+            LOG_FILE.write_text(json.dumps(geolog, ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception as e:
+            print(f"Не удалось сохранить {LOG_FILE}: {e}")
 
-print("✅  events.json создан/обновлён")
-session.close()
+    print("✅  events.json создан/обновлён")
+    session.close()
+
+
+if __name__ == "__main__":
+    main()
