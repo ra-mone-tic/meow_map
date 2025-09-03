@@ -9,58 +9,86 @@ if (!MAPTILER_KEY) {
 }
 
 // ===== КАРТА =====
-const map = new maplibregl.Map({
-  container:'map',
-  style:`https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`,
-  center:[20.45,54.71],
-  zoom:10
-});
+const MAP_OPTS = {
+  container: 'map',
+  // Используем более лёгкий стиль карты для ускорения загрузки
+  style: `https://api.maptiler.com/maps/streets/style.json?key=${MAPTILER_KEY}`,
+  center: [20.45, 54.71],
+  zoom: 10,
+  antialias: false,
+  maxZoom: 17
+};
 
-let styleErrorShown = false;
-map.on('error', e => {
-  if (styleErrorShown) return;
-  styleErrorShown = true;
-    const err = e && e.error;
-  const status = err && (err.status || err.statusCode);
-  const message = err && (err.message || err.statusText);
-  console.error(`Map style load error (${status}): ${message}`, err);
+let map;
+let isMapLibre = false;
 
-  let userMsg = 'Не удалось загрузить стиль карты.';
-  if (status === 401 || status === 403) {
-    userMsg = 'Ключ MapTiler недействителен или истёк.';
-  } else if (status === 0 || !navigator.onLine) {
-    userMsg = 'Отсутствует подключение к интернету.';
-  } else {
-    userMsg += ' Проверьте ключ MapTiler и подключение к интернету.';
-  }
-  alert(userMsg);
-});
+if (maplibregl && maplibregl.supported()) {
+  isMapLibre = true;
+  map = new maplibregl.Map(MAP_OPTS);
 
-map.addControl(new maplibregl.NavigationControl(),'top-right');
-map.addControl(new maplibregl.GeolocateControl({
-  positionOptions:{enableHighAccuracy:true},
-  showUserLocation:true
-}),'top-right');
+  let styleErrorShown = false;
+  map.on('error', e => {
+    if (styleErrorShown) return;
+    styleErrorShown = true;
+    console.error('Map style load error', e.error);
+    alert('Не удалось загрузить стиль карты. Проверьте ключ MapTiler и подключение к интернету.');
+  });
+
+  map.addControl(new maplibregl.NavigationControl(), 'top-right');
+  map.addControl(new maplibregl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    showUserLocation: true
+  }), 'top-right');
+
+  map.dragRotate.disable();
+  map.touchZoomRotate.disableRotation();
+} else {
+  // Фолбэк на Leaflet при отсутствии WebGL
+  map = L.map('map').setView([MAP_OPTS.center[1], MAP_OPTS.center[0]], MAP_OPTS.zoom);
+  L.tileLayer(`https://api.maptiler.com/maps/streets/256/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`, {
+    maxZoom: MAP_OPTS.maxZoom,
+    attribution: '&copy; MapTiler & OpenStreetMap contributors'
+  }).addTo(map);
+}
 
 // Ускорение отрисовки карты
 // helper для контроля частоты вызовов
-function debounce(fn, delay){
+function debounce(fn, delay) {
   let t;
-  return (...args)=>{clearTimeout(t);t=setTimeout(()=>fn(...args),delay);};
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
 }
 
-const resizeMap = debounce(()=>map.resize(),100);
+const resizeMap = debounce(() => {
+  if (isMapLibre) map.resize(); else map.invalidateSize();
+}, 100);
 
-map.on('load', () => { setTimeout(resizeMap, 100); });
+if (isMapLibre) {
+  map.on('load', () => { setTimeout(resizeMap, 100); });
+} else {
+  setTimeout(resizeMap, 100);
+}
 
 // ===== МАРКЕРЫ =====
-let markers=[];
-function clearMarkers(){markers.forEach(m=>m.remove());markers=[];}
-function addMarker(ev){
-  const pop=new maplibregl.Popup({offset:25})
-    .setHTML(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
-  const m=new maplibregl.Marker().setLngLat([ev.lon,ev.lat]).setPopup(pop).addTo(map);
-  markers.push(m);
+let markers = [];
+function clearMarkers() {
+  if (isMapLibre) {
+    markers.forEach(m => m.remove());
+  } else {
+    markers.forEach(m => map.removeLayer(m));
+  }
+  markers = [];
+}
+function addMarker(ev) {
+  if (isMapLibre) {
+    const pop = new maplibregl.Popup({ offset: 25 })
+      .setHTML(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
+    const m = new maplibregl.Marker().setLngLat([ev.lon, ev.lat]).setPopup(pop).addTo(map);
+    markers.push(m);
+  } else {
+    const m = L.marker([ev.lat, ev.lon]).addTo(map)
+      .bindPopup(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
+    markers.push(m);
+  }
 }
 
 // ===== ДАННЫЕ И РЕНДЕР =====
@@ -79,7 +107,10 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
     const todays=events.filter(e=>e.date===dateStr);
     todays.forEach(addMarker);
     // document.getElementById('count').textContent=todays.length;
-    if(todays.length) map.flyTo({center:[todays[0].lon,todays[0].lat],zoom:12});
+    if(todays.length){
+      if(isMapLibre) map.flyTo({center:[todays[0].lon,todays[0].lat],zoom:12});
+      else map.setView([todays[0].lat,todays[0].lon],12);
+    }
   }
 
   const upcoming=events.filter(e=>new Date(e.date)>=new Date(today)).slice(0,100);
@@ -95,12 +126,22 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
         render(e.date);
         setTimeout(()=>{
           const m = markers.find(mk => {
-            const p = mk.getLngLat();
-            return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
+            if(isMapLibre){
+              const p = mk.getLngLat();
+              return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
+            } else {
+              const p = mk.getLatLng();
+              return Math.abs(p.lat - e.lat) < 1e-5 && Math.abs(p.lng - e.lon) < 1e-5;
+            }
           });
           if (m) {
-            map.flyTo({center:[e.lon,e.lat],zoom:14});
-            m.togglePopup();
+            if(isMapLibre){
+              map.flyTo({center:[e.lon,e.lat],zoom:14});
+              m.togglePopup();
+            } else {
+              map.setView([e.lat,e.lon],14);
+              m.openPopup();
+            }
           }
           document.getElementById('sidebar').classList.remove('open');
         },100);
@@ -126,13 +167,3 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
 const sidebar=document.getElementById('sidebar');
 const burger=document.getElementById('burger');
 burger.onclick=()=>sidebar.classList.toggle('open');
-document.getElementById('closeSidebar').onclick=()=>sidebar.classList.remove('open');
-document.addEventListener('click',e=>{
-  if(sidebar.classList.contains('open')&&!sidebar.contains(e.target)&&e.target!==burger)
-    sidebar.classList.remove('open');
-});
-
-// страхуем от ленивой отрисовки
-window.addEventListener('resize', resizeMap);
-window.addEventListener('orientationchange', resizeMap);
-requestAnimationFrame(resizeMap); // один раз после первого кадра
