@@ -2,7 +2,7 @@
 // Загружаем список событий без параметра для принудительного обновления,
 // чтобы браузер мог кэшировать данные и ускорять повторные загрузки.
 const JSON_URL = 'events.json';
-const MAPTILER_KEY = (typeof process !== 'undefined' && process.env && process.env.MAPTILER_KEY) || globalThis.MAPTILER_KEY || '';
+const MAPTILER_KEY = (typeof process !== 'undefined' && process.env && process.env.MAPTILER_KEY) || window.MAPTILER_KEY || '';
 
 if (!MAPTILER_KEY) {
   console.warn('MAPTILER_KEY is not defined. Set it in config.js or as environment variable.');
