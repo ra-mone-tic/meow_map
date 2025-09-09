@@ -98,11 +98,31 @@ GEOCODERS = [
     {"name": "Nominatim", "func": nominatim_geocode},
 ]
 
+# ─────────── КЭШ ───────────
+def load_cache() -> dict:
+    """Загрузить кэш геокодинга из файла.
+
+    Если файл повреждён или отсутствует — вернуть пустой словарь,
+    чтобы запросы к API выполнялись только при необходимости.
+    """
+    if CACHE_FILE.exists():
+        try:
+            return json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+
+def save_cache(cache: dict) -> None:
+    """Сохранить текущий кэш геокодинга на диск."""
+    CACHE_FILE.write_text(
+        json.dumps(cache, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
 # Кэш адрес→[lat, lon]
-if CACHE_FILE.exists():
-    geocache = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
-else:
-    geocache = {}
+geocache = load_cache()
 
 geolog = {}  # адрес → {'arcgis':..., 'yandex':..., 'nominatim':...}
 
@@ -225,7 +245,7 @@ def main():
     )
 
     # кэш сохраняем всегда — экономит лимиты
-    CACHE_FILE.write_text(json.dumps(geocache, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_cache(geocache)
 
     if GEOCODE_SAVE_LOG:
         try:
