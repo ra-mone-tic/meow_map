@@ -11,24 +11,26 @@ const REGION_BBOX = [19.30, 54.00, 23.10, 55.60];
 // ===== КАРТА =====
 const MAP_OPTS = {
   container: 'map',
-  // Используем простые растровые тайлы OSM и ограничиваем запросы областью
+  // ВАЖНО: используем растровые тайлы CARTO Positron и ограничиваем запросы
+  // границами региона — иначе карта будет грузиться очень медленно
   style: {
     version: 8,
     sources: {
-      'osm-raster': {
+      'positron': {
         type: 'raster',
         tiles: [
-          'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+          'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+          'https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+          'https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+          'https://d.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
         ],
         tileSize: 256,
         bounds: REGION_BBOX,
-        attribution: '© OpenStreetMap contributors'
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
       }
     },
     layers: [
-      { id: 'osm', type: 'raster', source: 'osm-raster' }
+      { id: 'positron', type: 'raster', source: 'positron' }
     ]
   },
   center: [20.45, 54.71],
@@ -68,11 +70,11 @@ if (maplibregl && maplibregl.supported()) {
   // Фолбэк на Leaflet при отсутствии WebGL
   const bounds = [[REGION_BBOX[1], REGION_BBOX[0]], [REGION_BBOX[3], REGION_BBOX[2]]];
   map = L.map('map', { maxBounds: bounds }).setView([MAP_OPTS.center[1], MAP_OPTS.center[0]], MAP_OPTS.zoom);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
     maxZoom: MAP_OPTS.maxZoom,
     bounds: bounds,
     noWrap: true,
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
   }).addTo(map);
 }
 
