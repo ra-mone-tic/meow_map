@@ -46,6 +46,8 @@ const MAP_OPTS = {
 
 let map;
 let isMapLibre = false;
+// Быстрая карта соответствия id -> marker для открытия попапов по ссылке
+const markerById = new Map();
 
 if (maplibregl && maplibregl.supported()) {
   isMapLibre = true;
@@ -104,23 +106,71 @@ function clearMarkers() {
     markers.forEach(m => map.removeLayer(m));
   }
   markers = [];
+  markerById.clear();
 }
 function addMarker(ev) {
+  // HTML попапа с компактной кнопкой «поделиться» внизу справа
+  const shareBtnHtml = `<button
+      class="share-btn"
+      title="Поделиться"
+      onclick="copyShareLink('${ev.id}')"
+      style="position:absolute;right:8px;bottom:6px;border:none;background:#f2f2f2;border-radius:6px;padding:4px 6px;cursor:pointer;font-size:14px;line-height:1;"
+    >🔗</button>`;
+  const popupHtml = `
+    <div style="position:relative;padding:8px 8px 28px 8px;min-width:220px;">
+      <div><b>${ev.title}</b></div>
+      <div>${ev.location}</div>
+      <div style="color:#666">${ev.date}</div>
+      ${shareBtnHtml}
+    </div>
+  `;
   if (isMapLibre) {
-    const pop = new maplibregl.Popup({ offset: 25 })
-      .setHTML(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
+    const pop = new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml);
     const m = new maplibregl.Marker().setLngLat([ev.lon, ev.lat]).setPopup(pop).addTo(map);
     markers.push(m);
+    markerById.set(ev.id, m);
   } else {
-    const m = L.marker([ev.lat, ev.lon]).addTo(map)
-      .bindPopup(`<b>${ev.title}</b><br>${ev.location}<br>${ev.date}`);
+    const m = L.marker([ev.lat, ev.lon]).addTo(map).bindPopup(popupHtml);
     markers.push(m);
+    markerById.set(ev.id, m);
   }
 }
 
 // ===== ДАННЫЕ И РЕНДЕР =====
+// Стабильный id события (хэш djb2 -> hex)
+function makeEventId(e){
+  const s = `${e.date}|${e.title}|${e.lat}|${e.lon}`;
+  let h = 5381;
+  for (let i=0;i<s.length;i++) h = ((h<<5)+h) + s.charCodeAt(i);
+  const hex = (h>>>0).toString(16);
+  return `e${hex}`;
+}
+
+// Глобальный обработчик для кнопки «поделиться» (без всплывающих окон)
+window.copyShareLink = async function(id){
+  const url = new URL(window.location.href);
+  url.searchParams.set('event', id);
+  const shareUrl = url.toString();
+  try{
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(shareUrl);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = shareUrl;
+      ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  }catch(e){
+    console.error('Не удалось скопировать ссылку', e);
+  }
+};
+
 fetch(JSON_URL).then(r=>r.json()).then(events=>{
   events.sort((a,b)=>a.date.localeCompare(b.date));
+  // Назначаем id всем событиям
+  events.forEach(e=>{ e.id = makeEventId(e); });
 
   const input=document.getElementById('event-date');
   input.min=events[0].date; input.max=events[events.length-1].date;
@@ -182,6 +232,27 @@ fetch(JSON_URL).then(r=>r.json()).then(events=>{
     const d=new Date(ev.target.value).toISOString().slice(0,10);
     render(d);
   };
+  // Открыть попап по параметру ?event=ID
+  const urlParams = new URLSearchParams(window.location.search);
+  const targetId = urlParams.get('event');
+  if (targetId){
+    const target = events.find(e=>e.id===targetId);
+    if (target){
+      if (input.value !== target.date) render(target.date);
+      setTimeout(()=>{
+        const m = markerById.get(target.id);
+        if (m){
+          if (isMapLibre){
+            map.flyTo({center:[target.lon,target.lat],zoom:14});
+            m.togglePopup();
+          } else {
+            map.setView([target.lat,target.lon],14);
+            m.openPopup();
+          }
+        }
+      }, 150);
+    }
+  }
 }).catch(err=>{
   console.error('Ошибка загрузки данных', err);
   clearMarkers();
