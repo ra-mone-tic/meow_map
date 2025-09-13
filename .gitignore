@@ -1,11 +1,33 @@
-# приват/локалка
+﻿## Environment
 .env
 *.env
-# логи
-geocode_log.json
-# системное
+.env.example
+
+## Python caches
 __pycache__/
 *.pyc
+.pytest_cache/
+
+## Virtual environments
+.venv/
+venv/
+
+## Logs and local artifacts
+logs/
+geocode_log.json
+geocode_cache.json
+
+## OS/editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+## Node (not used now, but safe)
+node_modules/
+*.log
+
+## Patches and temp files
 fix.patch
-.env.example
-.gitignore
+*.patch
+*.tmp
